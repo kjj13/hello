@@ -84,266 +84,358 @@ public class test {
 
 ### 응집도 ###
 (회색) 높은 응집도 낮은 결합력!
+
+
+
 https://velog.io/@ljinsk3/%EC%A2%8B%EC%9D%80-%EC%84%A4%EA%B3%84%EB%9E%80-feat.-%EA%B2%B0%ED%95%A9%EB%8F%84-%EC%9D%91%EC%A7%91%EB%8F%84
 
-- **파일이 없으면 예외를 던지는지 알아보는 단위 테스트**
-    
+
+> 클래스는 인스턴스 변수 수가 작아야 하고, 메서드가 변수를 더 많이 사용할수록 메서드와 클래스는 응집도가 높다.
+> "응집도가 높다" : 클래스에 속한 메서드와 변수가 서로 의존하며 논리적인 단위로 묶인다는 의미.
+
+- **바람직한 예**
+  
     ```java
-    @Test(expected = StorageException.class)
-     public void retrieveSectionShouldThrowOnInvalidFileName() {
-         sectionStore.retrieveSection("invalid - file");
-     }
+    // Stack을 구현한 코드, 응집도가 높은 편이다.
+    // 각 Method마다 클래스 변수를 다 사용하였다.
+    public class Stack {
+        private int topOfStack = 0;
+        List<Integer> elements = new LinkedList<Integer>();
+
+        public int size() {
+            return topOfStack;
+        }
+
+        public void push(int element) {
+            topOfStack++;
+            elements.add(element);
+        }
+
+        public int pop() throws PoppedWhenEmpty {
+            if (topOfStack == 0)
+                throw new PoppedWhenEmpty();
+            int element = elements.get(--topOfStack);
+            elements.remove(topOfStack);
+            return element;
+        }
+    }
     ```
-    
-- **예외 안던지는 코드 → 실패**
-    
+### 응집도를 유지하면 작은 클래스 여럿이 나온다. ###
+- 큰 함수를 작은 함수 여럿으로 나누만 해도 클래스 수가 많아짐.
+- 클래스가 응집력을 잃는다면 쪼개라.
+- 프로그램에 점점 더 체계가 잡히고 구조가 투명해짐.
+
+
+- **안좋은 예**
+  
     ```java
-    public List<RecordedGrip> retrieveSection(String sectionName) {
-         // 실제로 구현할 때까지 비어 있는 더미를 반환한다.
-         return new ArrayList<RecordedGrip>();
-     }
-    ```
-    
-- **잘못된 파일 접근 시도하는 코드(예외 던짐) → 성공**
-    
-    ```java
-    public List<RecordedGrip> retrieveSection(String sectionName) {
-         try {
-             FileInputStream stream = new FileInputStream(sectionName);
-         } catch (Exception e) {
-             throw new StorageException("retrieval error", e);
-         }
-         return new ArrayList<RecordedGrip>();
-     }
-    ```
-    
-    - 리팩터링
-    
-    Exception → FileNotFoundException 으로 예외 유형을 좁힘.
-    
-    ```java
-    public List<RecordedGrip> retrieveSection(String sectionName) {
-         try {
-             FileInputStream stream = new FileInputStream(sectionName);
-             stream.close();
-         } catch (FileNotFoundException e) {
-             throw new StorageException("retrieval error", e);
-         }
-         return new ArrayList<RecordedGrip>();
-     }
-    ```
-    
+    public class PrintPrimes {
+        public static void main(String[] args) {
+            final int M = 1000; 
+            final int RR = 50;
+            final int CC = 4;
+            final int WW = 10;
+            final int ORDMAX = 30; 
+            int P[] = new int[M + 1]; 
+            int PAGENUMBER;
+            int PAGEOFFSET; 
+            int ROWOFFSET; 
+            int C;
+            int J;
+            int K;
+            boolean JPRIME;
+            int ORD;
+            int SQUARE;
+            int N;
+            int MULT[] = new int[ORDMAX + 1];
 
-## 미확인 예외를 사용하라
+            J = 1;
+            K = 1; 
+            P[1] = 2; 
+            ORD = 2; 
+            SQUARE = 9;
 
----
-
-### 미확인 예외 vs 확인된 예외
-
-- **미확인 예외 (UnChecked Exception)**
-    - 프로그램 로직의 오류로 인한 예외.
-    - **런타임** 시점에 예외처리 여부를 확인.
-    - ArrayIndexOutOfBoundsException, IllegalArgumentException, NullPointerException
-- **확인된 예외 (Checked Exception)**
-    - 프로그램 제어 밖에 있는 예외.
-    - **컴파일** 시점에 예외처리 여부를 확인.
-    - FileNotFoundException, SQLException, IOException, ClassNotFoundException
-
-참고한 사이트 : [https://velog.io/@sangmin7648/throws는-언제-사용해야할까](https://velog.io/@sangmin7648/throws%EB%8A%94-%EC%96%B8%EC%A0%9C-%EC%82%AC%EC%9A%A9%ED%95%B4%EC%95%BC%ED%95%A0%EA%B9%8C)
-
-<aside>
-💡 **확인된 예외는 OCP를 위반한다.**
-
-</aside>
-
-- **OCP란?**
-    
-    소프트웨어 엔티티(클래스, 모듈, 함수 등)는 확장에 대해서는 열려 있어야 하지만 변경에 대해서는 닫혀 있어야 한다.
-    
-    **즉. OCP는 해당 클래스의 기존 동작을 변경하지 않고 클래스의 동작을 확장하는 것을 목표로 함.**
-    
-- 확인된 예외를 사용하면 결과적으로 최**하위 단계에서 최상위 단계까지 연쇄적인 수정**이 일어남.
-- throws 경로에 위치하는 모든 함수가 최하위 함수에서 던지는 예외를 알아야 하므로 **캡슐화가 깨짐.**
-
-## 예외에 의미를 제공하라
-
----
-
-<aside>
-💡 **오류가 발생한 원인과 위치를 찾기 쉽게 전후 상황을 충분히 덧붙이기.**
-
-</aside>
-
-- 자바에서 호출 스택 제공하지만 부족함.
-- 오류 메시지에 실패한 연산 이름과 실패 유형과 같은 정보를 담아 예외와 함께 던지기.
-
-## 호출자를 고려해 예외 클래스를 정의하라
-
----
-
-<aside>
-💡 오류를 정의할 때 프로그래머에게 가장 중요한 관심사는 **오류를 잡아내는 방법**이 되어야 한다.
-
-</aside>
-
-- **외부 라이브러리가 던질 예외를 모두 잡은 코드**
-    
-    ```java
-    ACMEPort port = new ACMEPort(12);
-    
-     try {
-         port.open();
-     } catch (DeviceResponseException e) {
-         reportPortError(e);
-         logger.log("Device response exception", e);
-     } catch (ATM1212UnlockedException e) {
-         reportPortError(e);
-         logger.log("Unlock exception", e);
-     } catch (GMXError e) {
-         reportPortError(e);
-         logger.log("Device response exception");
-     } finally {
-         ...
-     }
-    ```
-    
-- **호출하는 라이브러리 API를 감싸면서 예외 유형 하나를 반환하는 코드**
-    
-    ```java
-    LocalPort port = new LocalPort(12);
-     try {
-         port.open();
-     } catch (PortDeviceFailure e) {
-         reportError(e);
-         logger.log(e.getMessage(), e);
-     } finally {
-         ...
-     }
-    ```
-    
-    ```java
-    public class LocalPort {
-         private ACMEPort innerPort;
-    
-         public LocalPort(int portNumber) {
-             innerPort = new ACMEPort(portNumber);
-         }
-    
-         public void open() {
-             try {
-                 innerPort.open();
-             } catch (DeviceResponseException e) {
-                 throw new PortDeviceFailure(e);
-             } catch (ATM1212UnlockedException e) {
-                 throw new PortDeviceFailure(e);
-             } catch (GMXError e) {
-                 throw new PortDeviceFailure(e);
-             }
-         }
-         ...
-     }
-    ```
-    
-
-- 외부 API를 사용할 때는 감싸기 기법이 최선이다.
-- 감싸기 기법을 사용하면 해당 API를 설계한 방식에 발목 잡히지 않음. (의존 X)
-
-## 정상 흐름을 정의하라
-
----
-
-<aside>
-💡 오류 처리로 인한 중단이 때로는 적합하지 않은 때도 있다.
-
-</aside>
-
-- **특수 사례 패턴 적용 전**
-    
-    ```java
-    try {
-    	MealExpenses expenses = expenseReportDAO.getMeals(employee.getID());
-    	m_total += expenses.getTotal();
-    } catch(MealExpensesNotFound e) {
-    	m_total += getMealPerDiem();
+            while (K < M) { 
+                do {
+                    J = J + 2;
+                    if (J == SQUARE) {
+                        ORD = ORD + 1;
+                        SQUARE = P[ORD] * P[ORD]; 
+                        MULT[ORD - 1] = J;
+                    }
+                    N = 2;
+                    JPRIME = true;
+                    while (N < ORD && JPRIME) {
+                        while (MULT[N] < J)
+                            MULT[N] = MULT[N] + P[N] + P[N];
+                        if (MULT[N] == J) 
+                            JPRIME = false;
+                        N = N + 1; 
+                    }
+                } while (!JPRIME); 
+                K = K + 1;
+                P[K] = J;
+            } 
+            {
+                PAGENUMBER = 1; 
+                PAGEOFFSET = 1;
+                while (PAGEOFFSET <= M) {
+                    System.out.println("The First " + M + " Prime Numbers --- Page " + PAGENUMBER);
+                    System.out.println("");
+                    for (ROWOFFSET = PAGEOFFSET; ROWOFFSET < PAGEOFFSET + RR; ROWOFFSET++) {
+                        for (C = 0; C < CC;C++)
+                            if (ROWOFFSET + C * RR <= M)
+                                System.out.format("%10d", P[ROWOFFSET + C * RR]); 
+                        System.out.println("");
+                    }
+                    System.out.println("\f"); PAGENUMBER = PAGENUMBER + 1; PAGEOFFSET = PAGEOFFSET + RR * CC;
+                }
+            }
+        }
     }
     ```
     
-- **특수 사례 패턴 적용**
-    
+ - **리팩터링**
     ```java
-    MealExpenses expenses = expenseReportDAO.getMeals(employee.getID());
-    m_total += expenses.getTotal();
-    ```
-    
-    ```java
-    public class PerDiemMealExpenses implements MealExpenses {
-    	public int getTotal() {
-    		// 기본값으로 일일 기본 식비를 반환한다.
-    	}
+       public class PrimePrinter {
+        public static void main(String[] args) {
+            final int NUMBER_OF_PRIMES = 1000;
+            int[] primes = PrimeGenerator.generate(NUMBER_OF_PRIMES);
+
+            final int ROWS_PER_PAGE = 50; 
+            final int COLUMNS_PER_PAGE = 4; 
+            RowColumnPagePrinter tablePrinter = 
+                new RowColumnPagePrinter(ROWS_PER_PAGE, 
+                            COLUMNS_PER_PAGE, 
+                            "The First " + NUMBER_OF_PRIMES + " Prime Numbers");
+            tablePrinter.print(primes); 
+        }
     }
     ```
-    
-    - getTotal 함수에 예외가 절대 반환할 수 없도록 코드를 수정
-    - 클래스를 만들거나 객체를 조작해 예외적인 상황을 캡슐화해서 처리.
-
-## null을 반환하지 마라
-
----
-
-<aside>
-💡 **null을 반환하는 습관은 나쁘다.**
-
-</aside>
-
-- 호출자에게 null을 체크할 의무를 줌
-- null 체크를 빼먹으면 NullPointerException 발생할 수 있음
-
-- **null 체크하는 코드**
-    
     ```java
-    List<Employee> employees = getEmployees();
-    if(employees != null) {
-    	for(Employee e : employees) {
-    		totalPay += e.getPay();
-    	}
+      public class RowColumnPagePrinter { 
+        private int rowsPerPage;
+        private int columnsPerPage; 
+        private int numbersPerPage; 
+        private String pageHeader; 
+        private PrintStream printStream;
+
+        public RowColumnPagePrinter(int rowsPerPage, int columnsPerPage, String pageHeader) { 
+            this.rowsPerPage = rowsPerPage;
+            this.columnsPerPage = columnsPerPage; 
+            this.pageHeader = pageHeader;
+            numbersPerPage = rowsPerPage * columnsPerPage; 
+            printStream = System.out;
+        }
+
+        public void print(int data[]) { 
+            int pageNumber = 1;
+            for (int firstIndexOnPage = 0 ; 
+                firstIndexOnPage < data.length ; 
+                firstIndexOnPage += numbersPerPage) { 
+                int lastIndexOnPage =  Math.min(firstIndexOnPage + numbersPerPage - 1, data.length - 1);
+                printPageHeader(pageHeader, pageNumber); 
+                printPage(firstIndexOnPage, lastIndexOnPage, data); 
+                printStream.println("\f");
+                pageNumber++;
+            } 
+        }
+
+        private void printPage(int firstIndexOnPage, int lastIndexOnPage, int[] data) { 
+            int firstIndexOfLastRowOnPage =
+            firstIndexOnPage + rowsPerPage - 1;
+            for (int firstIndexInRow = firstIndexOnPage ; 
+                firstIndexInRow <= firstIndexOfLastRowOnPage ;
+                firstIndexInRow++) { 
+                printRow(firstIndexInRow, lastIndexOnPage, data); 
+                printStream.println("");
+            } 
+        }
+
+        private void printRow(int firstIndexInRow, int lastIndexOnPage, int[] data) {
+            for (int column = 0; column < columnsPerPage; column++) {
+                int index = firstIndexInRow + column * rowsPerPage; 
+                if (index <= lastIndexOnPage)
+                    printStream.format("%10d", data[index]); 
+            }
+        }
+
+        private void printPageHeader(String pageHeader, int pageNumber) {
+            printStream.println(pageHeader + " --- Page " + pageNumber);
+            printStream.println(""); 
+        }
+
+        public void setOutput(PrintStream printStream) { 
+            this.printStream = printStream;
+        } 
     }
     ```
-    
-- **null 체크안해도 되는 코드 (특수 사례 객체 반환)**
-    
     ```java
-    List<Employee> employees = getEmployees();
-    for(Employee e : employees) {
-    	totalPay += e.getPay();
-    }
-    
-    public List<Employee> getEmployees() {
-    	if (..직원이 없다면..)
-    		return Collections.emptyList();
+      public class PrimeGenerator {
+        private static int[] primes;
+        private static ArrayList<Integer> multiplesOfPrimeFactors;
+
+        protected static int[] generate(int n) {
+            primes = new int[n];
+            multiplesOfPrimeFactors = new ArrayList<Integer>(); 
+            set2AsFirstPrime(); 
+            checkOddNumbersForSubsequentPrimes();
+            return primes; 
+        }
+
+        private static void set2AsFirstPrime() { 
+            primes[0] = 2; 
+            multiplesOfPrimeFactors.add(2);
+        }
+
+        private static void checkOddNumbersForSubsequentPrimes() { 
+            int primeIndex = 1;
+            for (int candidate = 3 ; primeIndex < primes.length ; candidate += 2) { 
+                if (isPrime(candidate))
+                    primes[primeIndex++] = candidate; 
+            }
+        }
+
+        private static boolean isPrime(int candidate) {
+            if (isLeastRelevantMultipleOfNextLargerPrimeFactor(candidate)) {
+                multiplesOfPrimeFactors.add(candidate);
+                return false; 
+            }
+            return isNotMultipleOfAnyPreviousPrimeFactor(candidate); 
+        }
+
+        private static boolean isLeastRelevantMultipleOfNextLargerPrimeFactor(int candidate) {
+            int nextLargerPrimeFactor = primes[multiplesOfPrimeFactors.size()];
+            int leastRelevantMultiple = nextLargerPrimeFactor * nextLargerPrimeFactor; 
+            return candidate == leastRelevantMultiple;
+        }
+
+        private static boolean isNotMultipleOfAnyPreviousPrimeFactor(int candidate) {
+            for (int n = 1; n < multiplesOfPrimeFactors.size(); n++) {
+                if (isMultipleOfNthPrimeFactor(candidate, n)) 
+                    return false;
+            }
+            return true; 
+        }
+
+        private static boolean isMultipleOfNthPrimeFactor(int candidate, int n) {
+            return candidate == smallestOddNthMultipleNotLessThanCandidate(candidate, n);
+        }
+
+        private static int smallestOddNthMultipleNotLessThanCandidate(int candidate, int n) {
+            int multiple = multiplesOfPrimeFactors.get(n); 
+            while (multiple < candidate)
+                multiple += 2 * primes[n]; 
+            multiplesOfPrimeFactors.set(n, multiple); 
+            return multiple;
+        } 
     }
     ```
-    
-    - 애초에 null 반환하지 않으므로 null 체크 안해도 됨.
-    - 코드도 깔끔해지고 NullPointerException 발생할 가능성 줄어듬
+  - 프로그램이 길어진 이유.
+    1. 좀 더 길고 서술적인 변수 이름 사용함
+    2. 코드에 주석을 추가하는 수단으로 함수 선언과 클래스 선언을 활용함
+    3. 가독성을 높이고자 공백을 추가하고 형식을 맞춤
+  
+  - PrimePrinter   
+    main 함수 하나를 포함하며 실행 환경을 책임짐    
+  - RowColumnPagePrinter    
+    숫자 목록을 주어진 행과 열에 맞춰 페이지에 출력    
+  - PrimeGenerator    
+    소수 목록을 생성    
+  두 프로그램의 알고리즘과 동작 원리는 동일하다. 하지만 하나의 거대한 함수보다는 책임을 하나만 가진 여러개의 클래스가 더 좋다.  
 
-## null을 전달하지 마라
+## 변경하기 쉬운 클래스 
+> 깨끗한 시스템은 클래스를 체계적으로 정리해 변경에 수반하는 위험을 낮춘다.   
+> 어떤 변경이든 클래
 
----
+- 메타 자료로 적절한 SQL 문자열을 만들어주는 sql 클래스 
+  ```java
+  public class Sql {
+      public Sql(String table, Column[] columns)
+      public String create()
+      public String insert(Object[] fields)
+      public String selectAll()
+      public String findByKey(String keyColumn, String keyValue)
+      public String select(Column column, String pattern)
+      public String select(Criteria criteria)
+      public String preparedInsert()
+      private String columnList(Column[] columns)
+      private String valuesList(Object[] fields, final Column[] columns) 
+    private String selectWithCriteria(String criteria)
+      private String placeholderList(Column[] columns)
+  }
+  ```
+  위 클래스가 SRP를 위반하는 이유
+  1. 새로운 SQL문을 지원하려면 Sql클래스 수정해야함.
+  2. 기존 SQL문 수정할 때도 Sql클래스 수정해야함.
+- 리팩터링
+  ```java
+    abstract public class Sql {
+      public Sql(String table, Column[] columns) 
+      abstract public String generate();
+    }
+    public class CreateSql extends Sql {
+      public CreateSql(String table, Column[] columns) 
+      @Override public String generate()
+    }
 
-<aside>
-💡 null 반환하는 방식도 나쁘지만 **null 전달하는 방식은 더 나쁘다.**
+    public class SelectSql extends Sql {
+      public SelectSql(String table, Column[] columns) 
+      @Override public String generate()
+    }
 
-</aside>
+    public class InsertSql extends Sql {
+      public InsertSql(String table, Column[] columns, Object[] fields) 
+      @Override public String generate()
+      private String valuesList(Object[] fields, final Column[] columns)
+    }
 
-- 애초에 null을 전달하지 못하게 해서 null 처리하는 것도 없게 하는게 좋음.
+    public class SelectWithCriteriaSql extends Sql { 
+      public SelectWithCriteriaSql(
+      String table, Column[] columns, Criteria criteria) 
+      @Override public String generate()
+    }
 
-## 결론
+    public class SelectWithMatchSql extends Sql { 
+      public SelectWithMatchSql(String table, Column[] columns, Column column, String pattern) 
+      @Override public String generate()
+    }
 
----
+    public class FindByKeySql extends Sql public FindByKeySql(
+      String table, Column[] columns, String keyColumn, String keyValue) 
+      @Override public String generate()
+    }
 
-<aside>
-💡 **깨끗한 코드는 읽기도 좋아야 하지만 안정성도 높아야 한다.
+    public class PreparedInsertSql extends Sql {
+      public PreparedInsertSql(String table, Column[] columns) 
+      @Override public String generate()
+      private String placeholderList(Column[] columns)
+    }
 
-오류 처리를 프로그램 논리와 분리해 튼튼하고 깨끗한 코드를 작성하면 코드 유지보수성도 높아진다.**
+    public class Where {
+      public Where(String criteria) 
+      public String generate()
+    }
 
-</aside>
+    public class ColumnList {
+      public ColumnList(Column[] columns) 
+      public String generate()
+    }
+  ```
+  (회색) Where, ColumnList는 어떤식으로 쓰는건지 모르겠네;    
+  추상 클래스 상속으로 분리하여 코드가 이해되기 쉬워졌고, SRP와 OCP를 지키게 됨.
+  > OCP란? 클래스는 확장에 개방적이고 수정에 폐쇄적이어야한다는 원칙.   
+  > => 새 기능을 수정하거나 기존 기능을 변경할 때 건드릴 코드가 없어야 한다.
+
+### 변경으로부터 격리
+ 요구사항 변함 -> 코드 변함    
+객체지향 프로그래밍에서는 구체적인 클래스와 추상 클래스가 있다.   
+상세한 구현에 의존하는 클라이언트 클래스는 구현이 바뀌면 위험에 빠짐. => 인터페이스와 추상 클래스를 사용해 구현이 미치는 영향을 격리함.   
+
+예로 든거처럼 API를 사용해 포트폴리오 값 계산하는데 이 API가 5분마다 값이 변하므로 테스트 코드를 작성하기 어려움.   
+
+따라서 API를 직접 호출하지않고 인터페이스 생성함.   
+ 
+인터페이스 매개변수? https://im-recording-of-sw-studies.tistory.com/56   
+
+http://amazingguni.github.io/blog/2016/06/Clean-Code-10-%ED%81%B4%EB%9E%98%EC%8A%A4
